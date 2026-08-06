@@ -9,21 +9,28 @@ class Config:
     
     # Admin Configuration - REPLACE WITH YOUR TWO ADMIN TELEGRAM IDs
     ADMIN_IDS = [
-        int(os.getenv("ADMIN_ID_1", "123456789")),  # Replace with first admin TG ID
-        int(os.getenv("ADMIN_ID_2", "987654321")),  # Replace with second admin TG ID
+        int(os.getenv("ADMIN_ID_1", "123456789")),
+        int(os.getenv("ADMIN_ID_2", "987654321")),
     ]
     
-    # Database
-    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///giveaway_bot.db")
+    # Database - Auto-detect and fix URL format
+    raw_db_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///tmp/giveaway_bot.db")
+    
+    # Fix PostgreSQL URL for async
+    if raw_db_url.startswith("postgres://"):
+        DATABASE_URL = raw_db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif raw_db_url.startswith("postgresql://") and not raw_db_url.startswith("postgresql+asyncpg://"):
+        DATABASE_URL = raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    else:
+        DATABASE_URL = raw_db_url
     
     # Webhook
     WEBHOOK_URL = os.getenv("WEBHOOK_URL")
     
     # Bot Settings
     BOT_NAME = "Premium Giveaway Bot"
-    MAX_GIVEAWAYS = 50  # Max active giveaways
+    MAX_GIVEAWAYS = 50
     
     @classmethod
     def is_admin(cls, user_id: int) -> bool:
-        """Check if user is an admin"""
         return user_id in cls.ADMIN_IDS
