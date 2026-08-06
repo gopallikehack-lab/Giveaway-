@@ -14,7 +14,7 @@ from bot.database import (
 
 logger = logging.getLogger(__name__)
 
-# Conversation states (using integers, not ConversationTypes)
+# Conversation states
 ADMIN_MENU = 0
 CREATE_TITLE = 1
 CREATE_DESCRIPTION = 2
@@ -37,8 +37,6 @@ def admin_only(func):
         return await func(update, context)
     return wrapper
 
-# ============== ADMIN PANEL MAIN MENU ==============
-
 @admin_only
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show admin panel"""
@@ -52,11 +50,7 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    text = (
-        f"🔐 **Admin Panel**\n\n"
-        f"Welcome, {update.effective_user.first_name}!\n"
-        f"Select an option below:"
-    )
+    text = f"🔐 **Admin Panel**\n\nWelcome, {update.effective_user.first_name}!\nSelect an option below:"
     
     if update.callback_query:
         await update.callback_query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
@@ -65,8 +59,6 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     return ADMIN_MENU
 
-# ============== CREATE GIVEAWAY FLOW ==============
-
 @admin_only
 async def create_giveaway_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start giveaway creation"""
@@ -74,9 +66,7 @@ async def create_giveaway_start(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
     
     await query.edit_message_text(
-        "🎁 **Create New Giveaway**\n\n"
-        "Step 1/6: Enter the **Title** for your giveaway:\n\n"
-        "Example: \"iPhone 15 Pro Giveaway!\"",
+        "🎁 **Create New Giveaway**\n\nStep 1/6: Enter the **Title** for your giveaway:\n\nExample: \"iPhone 15 Pro Giveaway!\"",
         parse_mode='Markdown'
     )
     return CREATE_TITLE
@@ -85,11 +75,8 @@ async def create_giveaway_start(update: Update, context: ContextTypes.DEFAULT_TY
 async def create_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Save title and ask for description"""
     context.user_data['giveaway_title'] = update.message.text
-    
     await update.message.reply_text(
-        "✅ Title saved!\n\n"
-        "Step 2/6: Enter the **Description**:\n\n"
-        "Explain the rules, requirements, or any important info.",
+        "✅ Title saved!\n\nStep 2/6: Enter the **Description**:\n\nExplain the rules, requirements, or any important info.",
         parse_mode='Markdown'
     )
     return CREATE_DESCRIPTION
@@ -98,11 +85,8 @@ async def create_title(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Save description and ask for prize"""
     context.user_data['giveaway_description'] = update.message.text
-    
     await update.message.reply_text(
-        "✅ Description saved!\n\n"
-        "Step 3/6: Enter the **Prize Description**:\n\n"
-        "What will the winner(s) receive?",
+        "✅ Description saved!\n\nStep 3/6: Enter the **Prize Description**:\n\nWhat will the winner(s) receive?",
         parse_mode='Markdown'
     )
     return CREATE_PRIZE
@@ -111,11 +95,8 @@ async def create_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def create_prize(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Save prize and ask for winners count"""
     context.user_data['giveaway_prize'] = update.message.text
-    
     await update.message.reply_text(
-        "✅ Prize saved!\n\n"
-        "Step 4/6: Enter the **Number of Winners**:\n\n"
-        "Example: 1, 2, 5, etc.",
+        "✅ Prize saved!\n\nStep 4/6: Enter the **Number of Winners**:\n\nExample: 1, 2, 5, etc.",
         parse_mode='Markdown'
     )
     return CREATE_WINNERS
@@ -130,11 +111,7 @@ async def create_winners(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['giveaway_winners'] = winners
         
         await update.message.reply_text(
-            "✅ Winners count saved!\n\n"
-            "Step 5/6: Enter **Start Time**:\n\n"
-            "Format: `YYYY-MM-DD HH:MM`\n"
-            "Example: `2024-12-25 10:00`\n\n"
-            "Or type 'now' to start immediately.",
+            "✅ Winners count saved!\n\nStep 5/6: Enter **Start Time**:\n\nFormat: `YYYY-MM-DD HH:MM`\nExample: `2024-12-25 10:00`\n\nOr type 'now' to start immediately.",
             parse_mode='Markdown'
         )
         return CREATE_START_TIME
@@ -154,8 +131,7 @@ async def create_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
             start_time = datetime.strptime(time_input, "%Y-%m-%d %H:%M")
         except ValueError:
             await update.message.reply_text(
-                "❌ Invalid format. Please use: `YYYY-MM-DD HH:MM`\n"
-                "Example: `2024-12-25 10:00`",
+                "❌ Invalid format. Please use: `YYYY-MM-DD HH:MM`\nExample: `2024-12-25 10:00`",
                 parse_mode='Markdown'
             )
             return CREATE_START_TIME
@@ -163,11 +139,7 @@ async def create_start_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['giveaway_start'] = start_time
     
     await update.message.reply_text(
-        "✅ Start time saved!\n\n"
-        "Step 6/6: Enter **End Time**:\n\n"
-        "Format: `YYYY-MM-DD HH:MM`\n"
-        "Example: `2024-12-30 23:59`\n\n"
-        "Or type '+7d' for 7 days from start, '+24h' for 24 hours.",
+        "✅ Start time saved!\n\nStep 6/6: Enter **End Time**:\n\nFormat: `YYYY-MM-DD HH:MM`\nExample: `2024-12-30 23:59`\n\nOr type '+7d' for 7 days from start, '+24h' for 24 hours.",
         parse_mode='Markdown'
     )
     return CREATE_END_TIME
@@ -200,7 +172,6 @@ async def create_end_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     context.user_data['giveaway_end'] = end_time
     
-    # Show confirmation
     text = (
         f"🎁 **Confirm Giveaway Creation**\n\n"
         f"**Title:** {context.user_data['giveaway_title']}\n"
@@ -243,16 +214,12 @@ async def confirm_create_callback(update: Update, context: ContextTypes.DEFAULT_
         )
         
         await query.edit_message_text(
-            f"✅ **Giveaway Created Successfully!**\n\n"
-            f"ID: `{giveaway.id}`\n"
-            f"Use /giveaways to see active giveaways.",
+            f"✅ **Giveaway Created Successfully!**\n\nID: `{giveaway.id}`\nUse /giveaways to see active giveaways.",
             parse_mode='Markdown'
         )
     
     context.user_data.clear()
     return ConversationHandler.END
-
-# ============== LIST GIVEAWAYS ==============
 
 async def list_giveaways(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """List all active giveaways"""
@@ -275,10 +242,7 @@ async def list_giveaways(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text += f"ID: `{gw.id}` | Entries: {len(gw.entries)}\n"
                 text += f"Winners: {gw.number_of_winners}\n"
                 text += f"Ends: {gw.end_time.strftime('%Y-%m-%d %H:%M')} UTC\n\n"
-                
-                keyboard.append([
-                    InlineKeyboardButton(f"🗑️ Delete {gw.id}", callback_data=f"del_{gw.id}")
-                ])
+                keyboard.append([InlineKeyboardButton(f"🗑️ Delete {gw.id}", callback_data=f"delete_{gw.id}")])
             
             keyboard.append([InlineKeyboardButton("🔙 Back to Admin", callback_data="admin_back")])
         
@@ -286,8 +250,6 @@ async def list_giveaways(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
         else:
             await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
-
-# ============== VIEW ALL USERS ==============
 
 async def view_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Display all users with full details"""
@@ -299,9 +261,7 @@ async def view_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
         users = await get_all_users(session)
         total_count = await get_user_count(session)
         
-        text = f"👥 **All Users Report**\n"
-        text += f"Total Users: `{total_count}`\n\n"
-        text += "📊 **User Details:**\n\n"
+        text = f"👥 **All Users Report**\nTotal Users: `{total_count}`\n\n📊 **User Details:**\n\n"
         
         for idx, user in enumerate(users[:20], 1):
             text += (
@@ -322,8 +282,6 @@ async def view_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
 
-# ============== STATISTICS ==============
-
 async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show bot statistics"""
     query = update.callback_query
@@ -332,7 +290,6 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with async_session() as session:
         total_users = await get_user_count(session)
         giveaways = await get_active_giveaways(session)
-        
         total_entries = sum(len(gw.entries) for gw in giveaways)
         
         text = (
@@ -346,8 +303,6 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     keyboard = [[InlineKeyboardButton("🔙 Back to Admin", callback_data="admin_back")]]
     await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
-
-# ============== DELETE GIVEAWAY ==============
 
 async def delete_giveaway_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show delete giveaway menu"""
@@ -366,10 +321,7 @@ async def delete_giveaway_menu(update: Update, context: ContextTypes.DEFAULT_TYP
         
         keyboard = []
         for gw in giveaways:
-            keyboard.append([InlineKeyboardButton(
-                f"🗑️ {gw.id}: {gw.title[:30]}...", 
-                callback_data=f"delete_{gw.id}"
-            )])
+            keyboard.append([InlineKeyboardButton(f"🗑️ {gw.id}: {gw.title[:30]}...", callback_data=f"delete_{gw.id}")])
         
         keyboard.append([InlineKeyboardButton("🔙 Cancel", callback_data="admin_back")])
         
@@ -424,16 +376,11 @@ async def execute_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with async_session() as session:
         success = await delete_giveaway(session, giveaway_id)
         if success:
-            await query.edit_message_text(
-                f"✅ Giveaway `{giveaway_id}` has been deleted.",
-                parse_mode='Markdown'
-            )
+            await query.edit_message_text(f"✅ Giveaway `{giveaway_id}` has been deleted.", parse_mode='Markdown')
         else:
             await query.edit_message_text("❌ Failed to delete giveaway.")
     
     context.user_data.pop('delete_giveaway_id', None)
-
-# ============== CALLBACK HANDLER ==============
 
 async def admin_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle admin panel callbacks"""
@@ -468,9 +415,7 @@ async def admin_callback_handler(update: Update, context: ContextTypes.DEFAULT_T
 def get_admin_conversation_handler():
     """Return the admin conversation handler"""
     return ConversationHandler(
-        entry_points=[
-            CommandHandler('admin', admin_panel),
-        ],
+        entry_points=[CommandHandler('admin', admin_panel)],
         states={
             ADMIN_MENU: [CallbackQueryHandler(admin_callback_handler)],
             CREATE_TITLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, create_title)],
@@ -481,7 +426,5 @@ def get_admin_conversation_handler():
             CREATE_END_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, create_end_time)],
             CREATE_CONFIRM: [CallbackQueryHandler(confirm_create_callback)],
         },
-        fallbacks=[
-            CommandHandler('cancel', lambda u, c: u.message.reply_text("Cancelled.") if u.message else u.callback_query.edit_message_text("Cancelled."))
-        ],
+        fallbacks=[CommandHandler('cancel', lambda u, c: u.message.reply_text("Cancelled.") if u.message else u.callback_query.edit_message_text("Cancelled."))]
     )
