@@ -23,7 +23,6 @@ class User(Base):
     joined_at = Column(DateTime, default=datetime.utcnow)
     last_activity = Column(DateTime, default=datetime.utcnow)
     
-    # Relationships
     entries = relationship("GiveawayEntry", back_populates="user", cascade="all, delete-orphan")
     
     def to_dict(self):
@@ -49,14 +48,13 @@ class Giveaway(Base):
     number_of_winners = Column(Integer, default=1)
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=False)
-    created_by = Column(Integer, nullable=False)  # Admin ID
+    created_by = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True)
     is_completed = Column(Boolean, default=False)
-    message_id = Column(Integer)  # Telegram message ID
-    chat_id = Column(Integer)  # Telegram chat ID
+    message_id = Column(Integer)
+    chat_id = Column(Integer)
     
-    # Relationships
     entries = relationship("GiveawayEntry", back_populates="giveaway", cascade="all, delete-orphan")
     winners = relationship("Winner", back_populates="giveaway", cascade="all, delete-orphan")
     
@@ -83,9 +81,8 @@ class GiveawayEntry(Base):
     giveaway_id = Column(Integer, ForeignKey('giveaways.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     entered_at = Column(DateTime, default=datetime.utcnow)
-    entry_number = Column(Integer)  # Unique entry number for the giveaway
+    entry_number = Column(Integer)
     
-    # Relationships
     giveaway = relationship("Giveaway", back_populates="entries")
     user = relationship("User", back_populates="entries")
 
@@ -95,33 +92,29 @@ class Winner(Base):
     id = Column(Integer, primary_key=True)
     giveaway_id = Column(Integer, ForeignKey('giveaways.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    position = Column(Integer)  # 1st, 2nd, 3rd, etc.
+    position = Column(Integer)
     selected_at = Column(DateTime, default=datetime.utcnow)
     
-    # Relationships
     giveaway = relationship("Giveaway", back_populates="winners")
 
-# Database engine setup
+# Database engine setup - FIXED
 if Config.DATABASE_URL.startswith("sqlite"):
-    engine = create_async_engine(Config.DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://"), echo=False)
-else:
     engine = create_async_engine(Config.DATABASE_URL, echo=False)
+else:
+    # PostgreSQL with asyncpg
+    engine = create_async_engine(Config.DATABASE_URL, echo=False, pool_pre_ping=True)
 
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 async def init_db():
-    """Initialize database tables"""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
 async def get_session():
-    """Get database session"""
     async with async_session() as session:
         yield session
 
-# User operations
 async def get_or_create_user(session: AsyncSession, telegram_user):
-    """Get existing user or create new one"""
     from sqlalchemy import select
     
     result = await session.execute(
@@ -141,7 +134,6 @@ async def get_or_create_user(session: AsyncSession, telegram_user):
         session.add(user)
         await session.commit()
     else:
-        # Update user info
         user.username = telegram_user.username
         user.first_name = telegram_user.first_name
         user.last_name = telegram_user.last_name
@@ -151,21 +143,17 @@ async def get_or_create_user(session: AsyncSession, telegram_user):
     return user
 
 async def get_all_users(session: AsyncSession):
-    """Get all users with full details"""
     from sqlalchemy import select
     result = await session.execute(select(User))
     return result.scalars().all()
 
 async def get_user_count(session: AsyncSession):
-    """Get total user count"""
     from sqlalchemy import func
     result = await session.execute(func.count(User.id))
     return result.scalar()
 
-# Giveaway operations
 async def create_giveaway(session: AsyncSession, title, description, prize_description, 
                          number_of_winners, start_time, end_time, created_by):
-    """Create new giveaway"""
     giveaway = Giveaway(
         title=title,
         description=description,
@@ -183,7 +171,6 @@ async def create_giveaway(session: AsyncSession, title, description, prize_descr
     return giveaway
 
 async def get_active_giveaways(session: AsyncSession):
-    """Get all active giveaways"""
     from sqlalchemy import select
     result = await session.execute(
         select(Giveaway).where(Giveaway.is_active == True, Giveaway.is_completed == False)
@@ -191,7 +178,6 @@ async def get_active_giveaways(session: AsyncSession):
     return result.scalars().all()
 
 async def get_giveaway_by_id(session: AsyncSession, giveaway_id: int):
-    """Get giveaway by ID"""
     from sqlalchemy import select
     result = await session.execute(
         select(Giveaway).where(Giveaway.id == giveaway_id)
@@ -199,7 +185,6 @@ async def get_giveaway_by_id(session: AsyncSession, giveaway_id: int):
     return result.scalar_one_or_none()
 
 async def delete_giveaway(session: AsyncSession, giveaway_id: int):
-    """Delete giveaway"""
     giveaway = await get_giveaway_by_id(session, giveaway_id)
     if giveaway:
         await session.delete(giveaway)
@@ -208,10 +193,8 @@ async def delete_giveaway(session: AsyncSession, giveaway_id: int):
     return False
 
 async def enter_giveaway(session: AsyncSession, giveaway_id: int, user_id: int):
-    """Enter user into giveaway"""
     from sqlalchemy import select, func
     
-    # Check if already entered
     result = await session.execute(
         select(GiveawayEntry).where(
             GiveawayEntry.giveaway_id == giveaway_id,
@@ -221,7 +204,6 @@ async def enter_giveaway(session: AsyncSession, giveaway_id: int, user_id: int):
     if result.scalar_one_or_none():
         return None, "already_entered"
     
-    # Get next entry number
     result = await session.execute(
         select(func.count(GiveawayEntry.id)).where(GiveawayEntry.giveaway_id == giveaway_id)
     )
@@ -237,7 +219,6 @@ async def enter_giveaway(session: AsyncSession, giveaway_id: int, user_id: int):
     return entry, "success"
 
 async def get_giveaway_entries(session: AsyncSession, giveaway_id: int):
-    """Get all entries for a giveaway"""
     from sqlalchemy import select
     result = await session.execute(
         select(GiveawayEntry).where(GiveawayEntry.giveaway_id == giveaway_id)
@@ -245,7 +226,6 @@ async def get_giveaway_entries(session: AsyncSession, giveaway_id: int):
     return result.scalars().all()
 
 async def get_user_giveaways(session: AsyncSession, user_id: int):
-    """Get all giveaways user has entered"""
     from sqlalchemy import select
     result = await session.execute(
         select(GiveawayEntry).where(GiveawayEntry.user_id == user_id)
