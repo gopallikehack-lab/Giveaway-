@@ -69,37 +69,29 @@ async def help_command(update: Update, context):
 async def cancel_conversation(update: Update, context):
     """Cancel conversation"""
     await update.message.reply_text("❌ Cancelled.")
-    return -1  # End conversation
+    return -1
 
 def setup_handlers(application: Application):
     """Setup all handlers"""
     import asyncio
     asyncio.create_task(init_db())
     
-    # Basic commands
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
-    
-    # Giveaway commands
     application.add_handler(CommandHandler("giveaways", show_giveaways))
     application.add_handler(CommandHandler("myentries", my_entries))
     application.add_handler(CommandHandler("status", check_giveaway_status))
     
-    # Admin conversation handler
     admin_conv_handler = get_admin_conversation_handler()
     application.add_handler(admin_conv_handler)
     
-    # Callback handlers
     application.add_handler(CallbackQueryHandler(join_giveaway, pattern="^join_"))
     application.add_handler(CallbackQueryHandler(admin_callback_handler, pattern="^(admin_|delete_|confirm_|cancel_)"))
     
-    # Error handler
     application.add_error_handler(error_handler)
 
 async def error_handler(update: Update, context):
     """Handle errors"""
     logger.error(f"Update {update} caused error {context.error}")
     if update and update.effective_message:
-        await update.effective_message.reply_text(
-            "❌ An error occurred. Please try again later."
-        )
+        await update.effective_message.reply_text("❌ An error occurred. Please try again later.")
