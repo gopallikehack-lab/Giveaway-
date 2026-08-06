@@ -6,8 +6,8 @@ from bot.config import Config
 from bot.database import init_db, get_or_create_user
 from bot.admin import (
     admin_panel, admin_callback_handler, get_admin_conversation_handler,
-    create_giveaway_start, create_title, create_description, create_prize,
-    create_winners, create_start_time, create_end_time, confirm_create
+    CREATE_TITLE, CREATE_DESCRIPTION, CREATE_PRIZE, CREATE_WINNERS,
+    CREATE_START_TIME, CREATE_END_TIME, CREATE_CONFIRM, confirm_create_callback
 )
 from bot.giveaway import show_giveaways, join_giveaway, check_giveaway_status, my_entries
 
@@ -17,7 +17,6 @@ async def start(update: Update, context):
     """Handle /start command"""
     user = update.effective_user
     
-    # Store user in database
     from bot.database import async_session
     async with async_session() as session:
         await get_or_create_user(session, user)
@@ -67,9 +66,13 @@ async def help_command(update: Update, context):
     
     await update.message.reply_text(help_text, parse_mode='Markdown')
 
+async def cancel_conversation(update: Update, context):
+    """Cancel conversation"""
+    await update.message.reply_text("❌ Cancelled.")
+    return -1  # End conversation
+
 def setup_handlers(application: Application):
     """Setup all handlers"""
-    # Initialize database
     import asyncio
     asyncio.create_task(init_db())
     
@@ -88,7 +91,7 @@ def setup_handlers(application: Application):
     
     # Callback handlers
     application.add_handler(CallbackQueryHandler(join_giveaway, pattern="^join_"))
-    application.add_handler(CallbackQueryHandler(admin_callback_handler, pattern="^(admin_|delete_|confirm_)"))
+    application.add_handler(CallbackQueryHandler(admin_callback_handler, pattern="^(admin_|delete_|confirm_|cancel_)"))
     
     # Error handler
     application.add_error_handler(error_handler)
